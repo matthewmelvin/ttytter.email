@@ -12,14 +12,15 @@ $handle = sub {
 	my($msgid) = &descape($ref->{'id'});
 	my($thrdid) = &descape($ref->{'in_reply_to_status_id'});
 	my($subj) = "$name: $text";
-	my($mesg, $date);
+	my($mesg, $date, $orig);
 
 	$thrdid = $msgid unless ($thrdid);
 
+	$orig = $text;
 	$text =~ s/\\[ntr]/ /g;
-	$text =~ s/(https?:\/\/\S+)/<a href="$1">$1<\/a>/g;
-	$text =~ s/#(\S+)/<a href="http:\/\/search.twitter.com\/search?q=$1">#$1<\/a>/g;
-	$text =~ s/\@([a-zA-Z0-9_]{1,15})/<a href="http:\/\/twitter.com\/$1">\@$1<\/a>/g;
+	$text =~ s/(https?:\/\/[^\s\"]+)/<a href="$1">$1<\/a>/g;
+	$text =~ s/(^|\s+)#(\S+)/$1<a href="http:\/\/search.twitter.com\/search?q=$2">#$2<\/a>/g;
+	$text =~ s/(^|\s+)\@([a-zA-Z0-9_]{1,15})/$1<a href="http:\/\/twitter.com\/$2">\@$2<\/a>/g;
 
 	$mesg = MIME::Lite->new(
 		'Subject' => $subj,
