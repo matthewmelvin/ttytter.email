@@ -4,17 +4,40 @@ use MIME::Lite;
 use Date::Manip;
 use HTML::Entities;
 
+$MSGIDS = "$ENV{'HOME'}/.ttytter.thrdids";
+%MSGIDS = ();
+if (open(F, "<$MSGIDS")) {
+	while (<F>) {
+		next unless (/(\d+) (\d+)/);
+		$MSGIDS{$1} = $2;
+	}
+	close(F);
+}
+print $stdout "" . scalar(keys %MSGIDS) . " \"Message-Id\" / \"References\" pairs loaded.\n";
+
+
 $handle = sub {
         my $ref = shift;
 	my($host) = hostname();
 	my($name) = &descape($ref->{'user'}->{'screen_name'});
 	my($text) = &descape($ref->{'text'});
-	my($msgid) = &descape($ref->{'id'});
-	my($thrdid) = &descape($ref->{'in_reply_to_status_id'});
+	my($msgid) = &descape($ref->{'id_str'});
+	my($thrdid) = &descape($ref->{'in_reply_to_status_id_str'});
 	my($subj) = "$name: $text";
 	my($mesg, $date, $orig);
 
-	$thrdid = $msgid unless ($thrdid);
+	if ($MSGIDS{$msgid}) {
+		$date = UnixDate($ref->{'created_at'}, "%H:%M:%S");
+		print $stdout "$date: $subj (SEEN)\n";
+		return 1;
+	}
+
+	if ($thrdid) {
+		$thrdid = $MSGIDS{$thrdid} if ($MSGIDS{$thrdid});
+	} else {
+		$thrdid = $msgid;
+	}
+	$MSGIDS{$msgid} = $thrdid;
 
 	$orig = $text;
 	$text =~ s/\\[ntr]/ /g;
@@ -25,7 +48,6 @@ $handle = sub {
 	$mesg = MIME::Lite->new(
 		'Subject' => $subj,
 		'Type' => 'text/html',
-		'Date' => $ref->{'created_at'},
 		'To:' => 'user@example.com',
 		'Message-Id' => "<ttytter.$msgid\@$host>",
 		'References' => "<ttytter.$thrdid\@$host>",
@@ -38,10 +60,21 @@ $handle = sub {
 	);
 
 	$mesg->send();
-	# $mesg->print($stdout);
 
 	$date = UnixDate($ref->{'created_at'}, "%H:%M:%S");
-	print $stdout "$date: $subj\n";
+	print $stdout "$date: $subj\n" if ( -t $stdout );
 
-	return 1;
+};
+
+$conclude = sub {
+	my($idx) = 0;
+	if (open(F, ">$MSGIDS")) {
+		foreach (sort { $b <=> $a } keys %MSGIDS) {
+			print F "$_ $MSGIDS{$_}\n";
+			last if ($idx++ > 1000);
+		}
+		close(F);
+	}
+
+	&defaultconclude;
 };
