@@ -41,9 +41,9 @@ $handle = sub {
 
 	$orig = $text;
 	$text =~ s/\\[ntr]/ /g;
-	$text =~ s/(https?:\/\/[^\s\"]+)/<a href="$1">$1<\/a>/g;
+	$text =~ s!(https?://([-\w\.]+)+(:\d+)?(/([\w/_\.\~\-\#\!]*(\?\S+)?)?)?)!<a href="$1">$1</a>!g;
 	$text =~ s/(^|\s+)#(\S+)/$1<a href="http:\/\/search.twitter.com\/search?q=$2">#$2<\/a>/g;
-	$text =~ s/(^|\s+|\.)\@([a-zA-Z0-9_]{1,15})/$1<a href="http:\/\/twitter.com\/$2">\@$2<\/a>/g;
+	$text =~ s/(^|\s+|\.|")\@([a-zA-Z0-9_]{1,15})/$1<a href="http:\/\/twitter.com\/$2">\@$2<\/a>/g;
 
 	$mesg = MIME::Lite->new(
 		'Subject' => $subj,
