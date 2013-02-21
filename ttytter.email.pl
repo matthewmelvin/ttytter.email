@@ -3,6 +3,7 @@ use Sys::Hostname;
 use MIME::Lite;
 use Date::Manip;
 use HTML::Entities;
+use LWP::UserAgent;
 
 $MSGIDS = "$ENV{'HOME'}/.ttytter.thrdids";
 %MSGIDS = ();
@@ -15,6 +16,22 @@ if (open(F, "<$MSGIDS")) {
 }
 print $stdout "" . scalar(keys %MSGIDS) . " \"Message-Id\" / \"References\" pairs loaded.\n";
 
+sub unredir($) {
+	my($url) = $_[0];
+	my($res, $ua);
+	print $stdout "un-redirecting $url ...\n";
+
+	$ua = LWP::UserAgent->new('max_redirect' => 1);
+	$res = $ua->get($url);
+
+	if (defined($res->request->uri)) {
+		$url = $res->request->uri;
+	}
+
+	print $stdout "un-redirected url: $url\n";
+
+	return(sprintf('<a href="%s">%s</a>', $url, $url));
+}
 
 $handle = sub {
         my $ref = shift;
@@ -43,7 +60,7 @@ $handle = sub {
 	$text =~ s/\\[ntr]/ /g;
 	# $text =~ s!(https?://([-\w\.]+)+(:\d+)?(/([\w/_\.\~\-\#\!,]*(\?\S+)?)?)?)!<a href="$1">$1</a>!g;
 	# http://t.co/i7GwIev8 
-	$text =~ s!(https?://t\.co/[a-zA-Z0-9]{4,9})!<a href="$1">$1</a>!g;
+	$text =~ s!(https?://t\.co/[a-zA-Z0-9]{4,9})!unredir($1)!eg;
 	$text =~ s/(^|\s+)#(\S+)/$1<a href="http:\/\/search.twitter.com\/search?q=$2">#$2<\/a>/g;
 	$text =~ s/(^|\s+|\.|")\@([a-zA-Z0-9_]{1,15})/$1<a href="http:\/\/twitter.com\/$2">\@$2<\/a>/g;
 
