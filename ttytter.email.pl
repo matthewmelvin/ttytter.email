@@ -19,16 +19,21 @@ print $stdout "" . scalar(keys %MSGIDS) . " \"Message-Id\" / \"References\" pair
 sub unredir($) {
 	my($url) = $_[0];
 	my($res, $ua);
+	my($cnt) = 1;
 	print $stdout "un-redirecting $url ...\n";
 
 	$ua = LWP::UserAgent->new('max_redirect' => 1);
-	$res = $ua->get($url);
 
-	if (defined($res->request->uri)) {
+	while ($cnt <= 3) {
+		$res = $ua->get($url);
+
+		last unless (defined($res->request->uri));
+		last if ($url eq $res->request->uri);
+
 		$url = $res->request->uri;
+		print $stdout "un-redirected url $cnt: $url\n";
+		$cnt++;
 	}
-
-	print $stdout "un-redirected url: $url\n";
 
 	return(sprintf('<a href="%s">%s</a>', $url, $url));
 }
