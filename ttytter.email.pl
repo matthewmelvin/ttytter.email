@@ -28,7 +28,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.14 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.15 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -77,7 +77,8 @@ $handle = sub {
 	my($msgid) = &descape($ref->{'id_str'});
 	my($thrdid) = &descape($ref->{'in_reply_to_status_id_str'});
 	my($subj) = "$name: $text";
-	my($mesg, $date, $orig, $url, %seen, $body, $cid, $img);
+
+	my($mesg, $date, $orig, $url, %seen, $body, $cid, $img, $tags);
 
 	# print Dumper($ref);
 
@@ -139,6 +140,15 @@ $handle = sub {
 
 	$body .= "</body></html>\n";
 
+	$tags = "{ ";
+	foreach (keys %{$ref->{'tag'}}) {
+        	if ($tags =~ /=>/ ) {
+			$tags .= ", "
+		}
+		$tags .= "$_ => " . &descape($ref->{'tag'}->{$_});
+	}
+	$tags .= " }";
+	
 	$mesg = MIME::Lite->new(
 		'Subject' => $subj,
 		'Type' => 'multipart/related',
@@ -147,6 +157,7 @@ $handle = sub {
 		'References' => "<ttytter.$thrdid\@$host>",
 		'X-Psuedo-Feed-Url' => 'http://twitter.com',
 		'X-TTYtter-Email' => $VER,
+		'X-TTYtter-Tags' => $tags
 	);
 
 	$mesg->attach(
@@ -189,7 +200,7 @@ $conclude = sub {
 	if (open(F, ">$MSGIDS")) {
 		foreach (sort { $b <=> $a } keys %MSGIDS) {
 			print F "$_ $MSGIDS{$_}\n";
-			last if ($idx++ > 1000);
+			last if ($idx++ > 10000);
 		}
 		close(F);
 	}
