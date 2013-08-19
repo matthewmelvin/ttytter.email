@@ -28,7 +28,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.15 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.16 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -78,7 +78,7 @@ $handle = sub {
 	my($thrdid) = &descape($ref->{'in_reply_to_status_id_str'});
 	my($subj) = "$name: $text";
 
-	my($mesg, $date, $orig, $url, %seen, $body, $cid, $img, $tags);
+	my($mesg, $date, $orig, $url, %seen, $body, $cid, $img, $tags, $src);
 
 	# print Dumper($ref);
 
@@ -148,6 +148,8 @@ $handle = sub {
 		$tags .= "$_ => " . &descape($ref->{'tag'}->{$_});
 	}
 	$tags .= " }";
+
+	$src = &descape($ref->{'source'});
 	
 	$mesg = MIME::Lite->new(
 		'Subject' => $subj,
@@ -157,7 +159,8 @@ $handle = sub {
 		'References' => "<ttytter.$thrdid\@$host>",
 		'X-Psuedo-Feed-Url' => 'http://twitter.com',
 		'X-TTYtter-Email' => $VER,
-		'X-TTYtter-Tags' => $tags
+		'X-TTYtter-Tags' => $tags,
+		'X-TTYtter-Source' => $src
 	);
 
 	$mesg->attach(
