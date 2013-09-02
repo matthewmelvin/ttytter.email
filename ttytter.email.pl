@@ -16,7 +16,7 @@ use JSON;
 $UA = WWW::Mechanize->new();
 $UA->timeout(10);
 
-$SENDTO = 'user@example.com';
+$SENDTO = 'Example User <user@example.com>';
 
 $MSGIDS = "$ENV{'HOME'}/.ttytter.thrdids";
 %MSGIDS = ();
@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.17 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.18 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -57,34 +57,37 @@ sub bingtrans($$) {
 
 	print $stdout "translating from $lang: $orig\n" if ( -t $stdout );
 
-	$res = $UA->post("https://datamarket.accesscontrol.windows.net/v2/OAuth2-13",
+	eval { $res = $UA->post("https://datamarket.accesscontrol.windows.net/v2/OAuth2-13",
 		[
 			'client_id' => "ttytter_email_pl",
         		'client_secret' => "bmVlZCBhIHJlYWwga2V5IGZvciB0cmFuc2xhdGlvbiBhcGk=",
 			'scope' => "http://api.microsofttranslator.com",
 			'grant_type' => "client_credentials"
 		]
-	);
+	); };
+	return($orig) unless ($@ eq "");
 
 	eval { $json = from_json($res->content) };
-
 	return($orig) unless ($@ eq "");
 
 	$text = uri_escape(encode("UTF-8", $orig));
 
-	$res = $UA->get("http://api.microsofttranslator.com/V2/Http.svc/Translate?text=$text" .
+	eval { $res = $UA->get("http://api.microsofttranslator.com/V2/Http.svc/Translate?text=$text" .
 				"&to=en" .
 				"&from=$lang",
 			'Authorization' => "Bearer " . $json->{'access_token'}
-	);
+	); };
+	return($orig) unless ($@ eq "");
 
 	$text = $res->content;
 
 	return($orig) unless ($text =~ s/^<string[^>]*>//);
 	return($orig) unless ($text =~ s/<\/string[^>]*>$//);
 
+	$text = decode_entities($text);
+
 	print $stdout "translated to en: $text\n" if ( -t $stdout );
-	
+
 	return($text);
 }
 
@@ -136,22 +139,22 @@ $handle = sub {
 	}
 	$MSGIDS{$msgid} = $thrdid;
 
-	$ref->{'orig'} = $text;
-	
-	if (($ref->{'lang'}) && ($ref->{'lang'} ne "en")) {
-		$text = bingtrans($text, $ref->{'lang'});
-	}
-	$text =~ s/\\[ntr]/ /g;
-	# $text =~ s!(https?://([-\w\.]+)+(:\d+)?(/([\w/_\.\~\-\#\!,]*(\?\S+)?)?)?)!<a href="$1">$1</a>!g;
-	# $text =~ s!(https?://t\.co/[a-zA-Z0-9]*)!unredir($1)!eg;
+	$ref->{'tran'} = [];
+	push(@{$ref->{'tran'}}, $text);
 
+	push(@{$ref->{'tran'}}, "remove: LF HT CR");
+	$text =~ s/\\[ntr]/ /g;
+	push(@{$ref->{'tran'}}, $text);
+	
 	# replace text urls with href's.
 	foreach (@{$ref->{'entities'}->{'urls'}}, @{$ref->{'retweeted_status'}->{'entities'}->{'urls'}}) {
 		$url = &descape($_->{'expanded_url'});
 		next if defined($seen{$url});
 		$seen{$url} = 1;
 		# print $stdout "Searching for $url in $text ...\n" if ( -t $stdout );
+		push(@{$ref->{'tran'}}, "unredir: $url");
 		$text =~ s!(\Q$url\E)!unredir($1)!seg;
+		push(@{$ref->{'tran'}}, $text);
 	}
 
 	# replace img urls with inline images
@@ -161,15 +164,27 @@ $handle = sub {
 			next if defined($seen{$url});
 			$seen{$url} = 1;
 			# print $stdout "Searching for $url in $text ...\n" if ( -t $stdout );
+			push(@{$ref->{'tran'}}, "imgurl: $url");
 			$text =~ s!(\Q$url\E)!imgurl($1)!seg;
+			push(@{$ref->{'tran'}}, $text);
 		}
 	}
 
+	if (($ref->{'lang'}) && ($ref->{'lang'} ne "en")) {
+		push(@{$ref->{'tran'}}, "tanslate: " . $ref->{'lang'});
+		$text = bingtrans($text, $ref->{'lang'});
+		push(@{$ref->{'tran'}}, $text);
+	}
+
 	# turn any hashtags into links to real time search	
+	push(@{$ref->{'tran'}}, "hashtags...");
 	$text =~ s/(^|\s+)#(\S+)/$1<a href="http:\/\/twitter.com\/search\/realtime\/$2">#$2<\/a>/g;
+	push(@{$ref->{'tran'}}, $text);
 
 	# replace any @ mentions into links to the user's profile
+	push(@{$ref->{'tran'}}, "users...");
 	$text =~ s/(^|\s+|\.|")\@([a-zA-Z0-9_]{1,15})/$1<a href="http:\/\/twitter.com\/$2">\@$2<\/a>/g;
+	push(@{$ref->{'tran'}}, $text);
 
 	$body = "<html><body>\n";
 	$body .= "<a href=\"http://twitter.com/$name\">$name</a>: $text\n";
@@ -198,6 +213,7 @@ $handle = sub {
 	$mesg = MIME::Lite->new(
 		'Subject' => $subj,
 		'Type' => 'multipart/related',
+		'From:' => $SENDTO,
 		'To:' => $SENDTO,
 		'Message-Id' => "<ttytter.$msgid\@$host>",
 		'References' => "<ttytter.$thrdid\@$host>",
