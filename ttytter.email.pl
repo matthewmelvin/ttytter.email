@@ -8,6 +8,9 @@ use HTML::Entities;
 # use LWP::UserAgent;
 use WWW::Mechanize;
 use Data::Dumper;
+use URI::Escape;
+use Encode;
+use JSON;
 
 
 $UA = WWW::Mechanize->new();
@@ -28,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.16 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.17 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -47,11 +50,49 @@ sub imgurl($) {
 	return($html);
 }
 
+sub bingtrans($$) {
+	my($orig) = $_[0];
+	my($lang) = $_[1];
+	my($json, $text);
+
+	print $stdout "translating from $lang: $orig\n" if ( -t $stdout );
+
+	$res = $UA->post("https://datamarket.accesscontrol.windows.net/v2/OAuth2-13",
+		[
+			'client_id' => "ttytter_email_pl",
+        		'client_secret' => "bmVlZCBhIHJlYWwga2V5IGZvciB0cmFuc2xhdGlvbiBhcGk=",
+			'scope' => "http://api.microsofttranslator.com",
+			'grant_type' => "client_credentials"
+		]
+	);
+
+	eval { $json = from_json($res->content) };
+
+	return($orig) unless ($@ eq "");
+
+	$text = uri_escape(encode("UTF-8", $orig));
+
+	$res = $UA->get("http://api.microsofttranslator.com/V2/Http.svc/Translate?text=$text" .
+				"&to=en" .
+				"&from=$lang",
+			'Authorization' => "Bearer " . $json->{'access_token'}
+	);
+
+	$text = $res->content;
+
+	return($orig) unless ($text =~ s/^<string[^>]*>//);
+	return($orig) unless ($text =~ s/<\/string[^>]*>$//);
+
+	print $stdout "translated to en: $text\n" if ( -t $stdout );
+	
+	return($text);
+}
+
 sub unredir($) {
 	my($url) = $_[0];
 	my($res);
 	my($cnt) = 1;
-	print $stdout "un-redirecting $url ...\n" if ( -t $stdout );
+	# print $stdout "un-redirecting $url ...\n" if ( -t $stdout );
 
 	while ($cnt <= 3) {
 		# if the domain name is long(ish) it's probably not a url shortener
@@ -62,7 +103,7 @@ sub unredir($) {
 		last if ($url eq $res->request->uri);
 
 		$url = $res->request->uri;
-		print $stdout "un-redirected url $cnt: $url\n" if ( -t $stdout );
+		# print $stdout "un-redirected url $cnt: $url\n" if ( -t $stdout );
 		$cnt++;
 	}
 
@@ -78,7 +119,7 @@ $handle = sub {
 	my($thrdid) = &descape($ref->{'in_reply_to_status_id_str'});
 	my($subj) = "$name: $text";
 
-	my($mesg, $date, $orig, $url, %seen, $body, $cid, $img, $tags, $src);
+	my($mesg, $date, $url, %seen, $body, $cid, $img, $tags, $src);
 
 	# print Dumper($ref);
 
@@ -95,8 +136,11 @@ $handle = sub {
 	}
 	$MSGIDS{$msgid} = $thrdid;
 
-
-	$orig = $text;
+	$ref->{'orig'} = $text;
+	
+	if (($ref->{'lang'}) && ($ref->{'lang'} ne "en")) {
+		$text = bingtrans($text, $ref->{'lang'});
+	}
 	$text =~ s/\\[ntr]/ /g;
 	# $text =~ s!(https?://([-\w\.]+)+(:\d+)?(/([\w/_\.\~\-\#\!,]*(\?\S+)?)?)?)!<a href="$1">$1</a>!g;
 	# $text =~ s!(https?://t\.co/[a-zA-Z0-9]*)!unredir($1)!eg;
@@ -106,7 +150,7 @@ $handle = sub {
 		$url = &descape($_->{'expanded_url'});
 		next if defined($seen{$url});
 		$seen{$url} = 1;
-		print $stdout "Searching for $url in $text ...\n" if ( -t $stdout );
+		# print $stdout "Searching for $url in $text ...\n" if ( -t $stdout );
 		$text =~ s!(\Q$url\E)!unredir($1)!seg;
 	}
 
@@ -116,7 +160,7 @@ $handle = sub {
 		foreach $url (&descape($_->{'media_url'}), &descape($_->{'media_url_https'})) {
 			next if defined($seen{$url});
 			$seen{$url} = 1;
-			print $stdout "Searching for $url in $text ...\n" if ( -t $stdout );
+			# print $stdout "Searching for $url in $text ...\n" if ( -t $stdout );
 			$text =~ s!(\Q$url\E)!imgurl($1)!seg;
 		}
 	}
@@ -172,7 +216,7 @@ $handle = sub {
 	foreach $cid (keys %CIDS) {
 		$img = $CIDS{$cid}->{'url'};
 
-		print $stdout "Getting img: $img\n" if ( -t $stdout );
+		# print $stdout "Getting img: $img\n" if ( -t $stdout );
 		$UA->get($img);
 		unless ($UA->success()) {
 			print $stdout "Failed img: $img\n" if ( -t $stdout );
