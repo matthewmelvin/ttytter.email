@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.18 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.19 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -100,7 +100,9 @@ sub unredir($) {
 	while ($cnt <= 3) {
 		# if the domain name is long(ish) it's probably not a url shortener
 		last if ($url =~ m!://[^/]{9,}!);  # youtube's shortner is 8 chars
-		$res = $UA->get($url);
+
+		eval { $res = $UA->get($url); };
+		last unless ($@ eq "");
 
 		last unless (defined($res->request->uri));
 		last if ($url eq $res->request->uri);
@@ -141,7 +143,6 @@ $handle = sub {
 
 	$ref->{'tran'} = [];
 	push(@{$ref->{'tran'}}, $text);
-
 	push(@{$ref->{'tran'}}, "remove: LF HT CR");
 	$text =~ s/\\[ntr]/ /g;
 	push(@{$ref->{'tran'}}, $text);
@@ -176,14 +177,25 @@ $handle = sub {
 		push(@{$ref->{'tran'}}, $text);
 	}
 
+	if (($text !~ /<a href=/) && ($text =~ m!https?://t\.co/[a-zA-Z0-9]*!)) {
+		push(@{$ref->{'tran'}}, "naked urls: " . $ref->{'lang'});
+		$text =~ s!(https?://t\.co/[a-zA-Z0-9]*)!unredir($1)!eg;
+	}
+
 	# turn any hashtags into links to real time search	
 	push(@{$ref->{'tran'}}, "hashtags...");
-	$text =~ s/(^|\s+)#(\S+)/$1<a href="http:\/\/twitter.com\/search\/realtime\/$2">#$2<\/a>/g;
+	$text =~ s/(^|\s+)#([^\s<]+)/$1<a href="http:\/\/twitter.com\/search\/realtime\/$2">#$2<\/a>/g;
 	push(@{$ref->{'tran'}}, $text);
 
 	# replace any @ mentions into links to the user's profile
 	push(@{$ref->{'tran'}}, "users...");
 	$text =~ s/(^|\s+|\.|")\@([a-zA-Z0-9_]{1,15})/$1<a href="http:\/\/twitter.com\/$2">\@$2<\/a>/g;
+	push(@{$ref->{'tran'}}, $text);
+
+	# replace <'s and >'s that aren't part of a's 
+	push(@{$ref->{'tran'}}, "angle brackets...");
+	$text =~ s#<(?!(a |/a>|br>|img))#&lt;#sg;
+	$text =~ s#(?<!(."|/a|br))>#&gt;#sg;
 	push(@{$ref->{'tran'}}, $text);
 
 	$body = "<html><body>\n";
@@ -233,7 +245,13 @@ $handle = sub {
 		$img = $CIDS{$cid}->{'url'};
 
 		# print $stdout "Getting img: $img\n" if ( -t $stdout );
-		$UA->get($img);
+		eval { $UA->get($img); };
+		unless ($@ eq "") {
+			$@ =~ s/\n.*$//s;
+			print $stdout "Failed img: $@\n" if ( -t $stdout );
+			next;
+		}
+
 		unless ($UA->success()) {
 			print $stdout "Failed img: $img\n" if ( -t $stdout );
 			next;
