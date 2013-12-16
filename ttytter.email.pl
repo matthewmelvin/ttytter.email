@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.20 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.21 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -164,7 +164,7 @@ $handle = sub {
 		next if defined($seen{$url});
 		$seen{$url} = 1;
 		push(@{$ref->{'tran'}}, "unredir: $url");
-		$text =~ s!(\Q$url\E)!unredir($1)!seg;
+		$text =~ s!(\Q$url\E)!unredir($1)!segi;
 		push(@{$ref->{'tran'}}, $text);
 	}
 
@@ -176,7 +176,7 @@ $handle = sub {
 			$seen{$url} = 1;
 			# print $stdout "Searching for $url in $text ...\n" if ( -t $stdout );
 			push(@{$ref->{'tran'}}, "imgurl: $url");
-			$text =~ s!(\Q$url\E)!imgurl($1)!seg;
+			$text =~ s!(\Q$url\E)!imgurl($1)!segi;
 			push(@{$ref->{'tran'}}, $text);
 		}
 	}
