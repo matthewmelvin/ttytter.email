@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.19 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.20 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -141,18 +141,28 @@ $handle = sub {
 	}
 	$MSGIDS{$msgid} = $thrdid;
 
+	# keep a record if each transformation
 	$ref->{'tran'} = [];
 	push(@{$ref->{'tran'}}, $text);
+
+
+	# remove any line feeds, horizontal tabs, or carriage returns
 	push(@{$ref->{'tran'}}, "remove: LF HT CR");
 	$text =~ s/\\[ntr]/ /g;
 	push(@{$ref->{'tran'}}, $text);
+
+	# translate the text if not in english
+	if (($ref->{'lang'}) && ($ref->{'lang'} ne "en")) {
+		push(@{$ref->{'tran'}}, "tanslate: " . $ref->{'lang'});
+		$text = bingtrans($text, $ref->{'lang'});
+		push(@{$ref->{'tran'}}, $text);
+	}
 	
 	# replace text urls with href's.
 	foreach (@{$ref->{'entities'}->{'urls'}}, @{$ref->{'retweeted_status'}->{'entities'}->{'urls'}}) {
 		$url = &descape($_->{'expanded_url'});
 		next if defined($seen{$url});
 		$seen{$url} = 1;
-		# print $stdout "Searching for $url in $text ...\n" if ( -t $stdout );
 		push(@{$ref->{'tran'}}, "unredir: $url");
 		$text =~ s!(\Q$url\E)!unredir($1)!seg;
 		push(@{$ref->{'tran'}}, $text);
@@ -171,12 +181,8 @@ $handle = sub {
 		}
 	}
 
-	if (($ref->{'lang'}) && ($ref->{'lang'} ne "en")) {
-		push(@{$ref->{'tran'}}, "tanslate: " . $ref->{'lang'});
-		$text = bingtrans($text, $ref->{'lang'});
-		push(@{$ref->{'tran'}}, $text);
-	}
 
+	# dereference and wrap up in href's any naked urls
 	if (($text !~ /<a href=/) && ($text =~ m!https?://t\.co/[a-zA-Z0-9]*!)) {
 		push(@{$ref->{'tran'}}, "naked urls: " . $ref->{'lang'});
 		$text =~ s!(https?://t\.co/[a-zA-Z0-9]*)!unredir($1)!eg;
@@ -192,7 +198,7 @@ $handle = sub {
 	$text =~ s/(^|\s+|\.|")\@([a-zA-Z0-9_]{1,15})/$1<a href="http:\/\/twitter.com\/$2">\@$2<\/a>/g;
 	push(@{$ref->{'tran'}}, $text);
 
-	# replace <'s and >'s that aren't part of a's 
+	# replace <'s and >'s that aren't part of a's or br's
 	push(@{$ref->{'tran'}}, "angle brackets...");
 	$text =~ s#<(?!(a |/a>|br>|img))#&lt;#sg;
 	$text =~ s#(?<!(."|/a|br))>#&gt;#sg;
