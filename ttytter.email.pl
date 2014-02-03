@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.21 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.22 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -200,7 +200,7 @@ $handle = sub {
 
 	# replace <'s and >'s that aren't part of a's or br's
 	push(@{$ref->{'tran'}}, "angle brackets...");
-	$text =~ s#<(?!(a |/a>|br>|img))#&lt;#sg;
+	$text =~ s#<(?!(a href=|/a>|br>|img))#&lt;#sg;
 	$text =~ s#(?<!(."|/a|br))>#&gt;#sg;
 	push(@{$ref->{'tran'}}, $text);
 
