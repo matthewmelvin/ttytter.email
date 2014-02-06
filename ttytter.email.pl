@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.22 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.23 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -43,9 +43,11 @@ sub imgurl($) {
 
 	$cid = md5_hex($url);
 
-	$html = "\n<br><a href=\"$url\"><img src=\"cid:$cid\"></a><br>\n";
-
 	$CIDS{$cid}->{'url'} = $url;
+
+	$url =~ s/(twimg.com\/.*jpg)$/$1:large/;
+
+	$html = "\n<br><a href=\"$url\"><img src=\"cid:$cid\"></a><br>\n";
 
 	return($html);
 }
