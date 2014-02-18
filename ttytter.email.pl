@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.24 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.25 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -101,7 +101,7 @@ sub unredir($) {
 
 	while ($cnt <= 3) {
 		# if the domain name is long(ish) it's probably not a url shortener
-		last if ($url =~ m!://[^/]{9,}!);  # youtube's shortner is 8 chars
+		last if ($url =~ m!://[^/]{12,}!);  # youtube's shortner is 8 chars
 
 		eval { $res = $UA->get($url); };
 		last unless ($@ eq "");
@@ -121,6 +121,7 @@ $handle = sub {
         my $ref = shift;
 	my($host) = hostname();
 	my($name) = &descape($ref->{'user'}->{'screen_name'});
+	my($repl) = &descape($ref->{'in_reply_to_screen_name'});
 	my($text) = &descape($ref->{'text'});
 	my($msgid) = &descape($ref->{'id_str'});
 	my($thrdid) = &descape($ref->{'in_reply_to_status_id_str'});
@@ -208,8 +209,15 @@ $handle = sub {
 
 	$body = "<html><body>\n";
 	$body .= "<a href=\"http://twitter.com/$name\">$name</a>: $text\n";
+
 	$body .= "<p>\n";
-	$body .= "URL: <a href=\"http://twitter.com/$name/statuses/$msgid\">http://twitter.com/$name/statuses/$msgid</a></p>\n";
+
+	$body .= "URL: <a href=\"http://twitter.com/$name/statuses/$msgid\">http://twitter.com/$name/statuses/$msgid</a>\n";
+	if ($msgid ne $thrdid) {
+		$body .= "<br>REF: <a href=\"http://twitter.com/$repl/statuses/$thrdid\">http://twitter.com/$repl/statuses/$thrdid</a>\n";
+	}
+
+	$body .= "<p>\n";
 
 	$body .= "<!-- \n\n";
         $body .= "base64 --decode --ignore-garbage << _EOF_\n";
