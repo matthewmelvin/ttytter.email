@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.25 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.26 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -149,9 +149,14 @@ $handle = sub {
 	push(@{$ref->{'tran'}}, $text);
 
 
-	# remove any line feeds, horizontal tabs, or carriage returns
-	push(@{$ref->{'tran'}}, "remove: LF HT CR");
-	$text =~ s/\\[ntr]/ /g;
+	# remove any horizontal tabs, or carriage returns
+	push(@{$ref->{'tran'}}, "remove: HT CR");
+	$text =~ s/\\[tr]/ /g;
+	push(@{$ref->{'tran'}}, $text);
+
+	# convert any line feeds to breaks
+	push(@{$ref->{'tran'}}, "remove: LF");
+	$text =~ s/\\n/<br>/g;
 	push(@{$ref->{'tran'}}, $text);
 
 	# translate the text if not in english
