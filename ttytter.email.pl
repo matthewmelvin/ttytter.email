@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.26 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.27 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -126,10 +126,11 @@ $handle = sub {
 	my($msgid) = &descape($ref->{'id_str'});
 	my($thrdid) = &descape($ref->{'in_reply_to_status_id_str'});
 	my($subj) = "$name: $text";
-
 	my($mesg, $date, $url, %seen, $body, $cid, $img, $tags, $src);
 
 	# print Dumper($ref);
+
+	$subj =~ s/[^\012\040-\176]/?/g;
 
 	if ($MSGIDS{$msgid}) {
 		$date = UnixDate($ref->{'created_at'}, "%H:%M:%S");
