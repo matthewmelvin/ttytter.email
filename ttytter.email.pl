@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.27 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.28 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -74,7 +74,7 @@ sub bingtrans($$) {
 
 	$text = uri_escape(encode("UTF-8", $orig));
 
-	eval { $res = $UA->get("http://api.microsofttranslator.com/V2/Http.svc/Translate?text=$text" .
+	eval { $res = $UA->get("https://api.microsofttranslator.com/V2/Http.svc/Translate?text=$text" .
 				"&to=en" .
 				"&from=$lang",
 			'Authorization' => "Bearer " . $json->{'access_token'}
@@ -123,8 +123,7 @@ $handle = sub {
 	my($name) = &descape($ref->{'user'}->{'screen_name'});
 	my($repl) = &descape($ref->{'in_reply_to_screen_name'});
 	my($text) = &descape($ref->{'text'});
-	my($msgid) = &descape($ref->{'id_str'});
-	my($thrdid) = &descape($ref->{'in_reply_to_status_id_str'});
+	my($msgid, $thrdid);
 	my($subj) = "$name: $text";
 	my($mesg, $date, $url, %seen, $body, $cid, $img, $tags, $src);
 
@@ -132,10 +131,26 @@ $handle = sub {
 
 	$subj =~ s/[^\012\040-\176]/?/g;
 
+	$msgid = &descape($ref->{'id_str'});
+
 	if ($MSGIDS{$msgid}) {
 		$date = UnixDate($ref->{'created_at'}, "%H:%M:%S");
 		print $stdout "$date: $subj (SEEN)\n" if ( -t $stdout );
 		return 1;
+	}
+
+	if ($ref->{'retweeted_status'}) {
+		if ($ref->{'retweeted_status'}->{'in_reply_to_status_id_str'}) {
+			$thrdid = &descape($ref->{'retweeted_status'}->{'in_reply_to_status_id_str'});
+		} else {
+			$thrdid = &descape($ref->{'retweeted_status'}->{'id_str'});
+		}
+	} else {
+		if ($ref->{'in_reply_to_status_id_str'}) {
+			$thrdid = &descape($ref->{'in_reply_to_status_id_str'});
+		} else {
+			$thrdid = undef;
+		}
 	}
 
 	if ($thrdid) {
@@ -199,12 +214,12 @@ $handle = sub {
 
 	# turn any hashtags into links to real time search	
 	push(@{$ref->{'tran'}}, "hashtags...");
-	$text =~ s/(^|\s+)#([^\s<]+)/$1<a href="http:\/\/twitter.com\/search\/realtime\/$2">#$2<\/a>/g;
+	$text =~ s/(^|\s+)#([^\s<]+)/$1<a href="https:\/\/twitter.com\/search\/realtime\/$2">#$2<\/a>/g;
 	push(@{$ref->{'tran'}}, $text);
 
 	# replace any @ mentions into links to the user's profile
 	push(@{$ref->{'tran'}}, "users...");
-	$text =~ s/(^|\s+|\.|")\@([a-zA-Z0-9_]{1,15})/$1<a href="http:\/\/twitter.com\/$2">\@$2<\/a>/g;
+	$text =~ s/(^|\s+|\.|")\@([a-zA-Z0-9_]{1,15})/$1<a href="https:\/\/twitter.com\/$2">\@$2<\/a>/g;
 	push(@{$ref->{'tran'}}, $text);
 
 	# replace <'s and >'s that aren't part of a's or br's
@@ -214,13 +229,13 @@ $handle = sub {
 	push(@{$ref->{'tran'}}, $text);
 
 	$body = "<html><body>\n";
-	$body .= "<a href=\"http://twitter.com/$name\">$name</a>: $text\n";
+	$body .= "<a href=\"https://twitter.com/$name\">$name</a>: $text\n";
 
 	$body .= "<p>\n";
 
-	$body .= "URL: <a href=\"http://twitter.com/$name/statuses/$msgid\">http://twitter.com/$name/statuses/$msgid</a>\n";
+	$body .= "URL: <a href=\"https://twitter.com/$name/statuses/$msgid\">https://twitter.com/$name/statuses/$msgid</a>\n";
 	if ($msgid ne $thrdid) {
-		$body .= "<br>REF: <a href=\"http://twitter.com/$repl/statuses/$thrdid\">http://twitter.com/$repl/statuses/$thrdid</a>\n";
+		$body .= "<br>REF: <a href=\"https://twitter.com/$repl/statuses/$thrdid\">https://twitter.com/$repl/statuses/$thrdid</a>\n";
 	}
 
 	$body .= "<p>\n";
