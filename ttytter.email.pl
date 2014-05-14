@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.28 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.29 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -121,9 +121,8 @@ $handle = sub {
         my $ref = shift;
 	my($host) = hostname();
 	my($name) = &descape($ref->{'user'}->{'screen_name'});
-	my($repl) = &descape($ref->{'in_reply_to_screen_name'});
 	my($text) = &descape($ref->{'text'});
-	my($msgid, $thrdid);
+	my($repl, $msgid, $thrdid);
 	my($subj) = "$name: $text";
 	my($mesg, $date, $url, %seen, $body, $cid, $img, $tags, $src);
 
@@ -142,14 +141,18 @@ $handle = sub {
 	if ($ref->{'retweeted_status'}) {
 		if ($ref->{'retweeted_status'}->{'in_reply_to_status_id_str'}) {
 			$thrdid = &descape($ref->{'retweeted_status'}->{'in_reply_to_status_id_str'});
+			$repl = &descape($ref->{'retweeted_status'}->{'in_reply_to_screen_name'});
 		} else {
 			$thrdid = &descape($ref->{'retweeted_status'}->{'id_str'});
+			$repl = &descape($ref->{'retweeted_status'}->{'user'}->{'screen_name'});
 		}
 	} else {
 		if ($ref->{'in_reply_to_status_id_str'}) {
 			$thrdid = &descape($ref->{'in_reply_to_status_id_str'});
+			$repl = &descape($ref->{'in_reply_to_screen_name'});
 		} else {
 			$thrdid = undef;
+			$repl = undef;
 		}
 	}
 
