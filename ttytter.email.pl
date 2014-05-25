@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.29 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.30 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -277,7 +277,8 @@ $handle = sub {
 
 	$mesg->attach(
 		'Type' => "text/html",
-		'Data' => $body
+		'Data' => $body,
+		'Encoding' => 'binary'
 	);
 
 
