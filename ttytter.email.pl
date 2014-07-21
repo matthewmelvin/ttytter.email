@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.32 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.33 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -191,7 +191,7 @@ $handle = sub {
 		next if defined($seen{$url});
 		$seen{$url} = 1;
 		push(@{$ref->{'tran'}}, "unredir: $url");
-		$text =~ s!(\Q$url\E)(\s|$)!sprintf("%s%s", unredir($1), $2)!segi;
+		$text =~ s!(\Q$url\E)([\s\n\<]|$)!sprintf("%s%s", unredir($1), $2)!segi;
 		push(@{$ref->{'tran'}}, $text);
 	}
 
