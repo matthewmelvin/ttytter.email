@@ -31,7 +31,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.33 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.34 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -267,8 +267,8 @@ $handle = sub {
 		'Type' => 'multipart/related',
 		'From:' => $SENDTO,
 		'To:' => $SENDTO,
-		'Message-Id' => "<ttytter.$msgid\@$host>",
-		'References' => "<ttytter.$thrdid\@$host>",
+		'Message-Id' => "<ttytter_$<.$msgid\@$host>",
+		'References' => "<ttytter_$<.$thrdid\@$host>",
 		'X-Psuedo-Feed-Url' => 'http://twitter.com',
 		'X-TTYtter-Email' => $VER,
 		'X-TTYtter-Tags' => $tags,
