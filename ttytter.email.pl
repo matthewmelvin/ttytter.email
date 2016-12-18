@@ -18,6 +18,9 @@ $UA->timeout(10);
 
 $SENDTO = 'Example User <user@example.com>';
 
+$CLIENT = 'ttytter_email_pl';
+$APIKEY = 'bmVlZCBhIHJlYWwga2V5IGZvciB0cmFuc2xhdGlvbiBhcGk=';
+
 $MSGIDS = "$ENV{'HOME'}/.ttytter.thrdids";
 %MSGIDS = ();
 
@@ -31,7 +34,7 @@ if (open(F, "<$MSGIDS")) {
 
 
 $VER = do {
-        my @r = (q$Revision: 1.34 $ =~ /\d+/g);
+        my @r = (q$Revision: 1.35 $ =~ /\d+/g);
         sprintf "%d."."%02d", @r
 };
 
@@ -61,8 +64,8 @@ sub bingtrans($$) {
 
 	eval { $res = $UA->post("https://datamarket.accesscontrol.windows.net/v2/OAuth2-13",
 		[
-			'client_id' => "ttytter_email_pl",
-        		'client_secret' => "bmVlZCBhIHJlYWwga2V5IGZvciB0cmFuc2xhdGlvbiBhcGk=",
+			'client_id' => $CLIENT,
+        		'client_secret' => $APIKEY,
 			'scope' => "http://api.microsofttranslator.com",
 			'grant_type' => "client_credentials"
 		]
